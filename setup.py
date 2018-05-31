@@ -28,7 +28,10 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'elite-route-plotter=elite-route-plotter:main'
+            'elite-route-plotter = elite_route_plotter.__main__:main []'
+        ],
+        'gui_scripts': [
+            'elite-route-plotter = elite_route_plotter.__main__:main []'
         ]
     }
 )
