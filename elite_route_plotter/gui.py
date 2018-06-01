@@ -25,7 +25,6 @@ class PlotterApp(wx.App):
                         wx.PostEvent(self.mainframe, xbs.WX_EVENT_TYPES[result.id](result.payload))
                 evtloop.Dispatch()
             gevent.sleep()
-            self.ProcessIdle()
         wx.EventLoop.SetActive(old)
 
     def OnInit(self):
@@ -318,7 +317,14 @@ class XboxSection(wx.StaticBoxSizer):
         self.xbox_connect_btn.Label = "Connect"
 
     def OnSystemTextInput(self, e):
-        erp.GUI_APP.task_queue.put(xbs.SystemTextSend("wewlad"))
+        print(e)
+        route: erp.Route = erp.GUI_APP.mainframe.route_panel.route
+        if route:
+            if route.next_waypoint is not None and not route.paused:
+                erp.GUI_APP.task_queue.put(xbs.SystemTextSend(route.next_waypoint.name))
+                route.visit(route.waypoints.index(route.next_waypoint))
+                erp.GUI_APP.mainframe.route_panel.route = route
+
 
     def OnConsoleSelected(self, e):
         discoveredConsole = e.EventObject.GetClientData(e.EventObject.GetCurrentSelection()).GetClientObject()
@@ -347,12 +353,6 @@ class XboxSection(wx.StaticBoxSizer):
     def OnDiscoveryFailure(self, e):
         e.EventObject.Label = "Scan"
         erp.GUI_APP.mainframe.SetStatusText(f"Failed to discover any console {e.data}")
-
-    def onTextPrompt(self, e):
-        print("Old Text:", e)
-        index, next_system = self.GetStaticBox().GetParent().GetParent().route_panel.get_next_system()
-        self.worker.send_text(str(next_system.name))
-        self.GetStaticBox().GetParent().GetParent().route_panel.mark_visited(int(index))
 
     def onConnectBtn(self, e):
         ""
@@ -520,14 +520,14 @@ class RouteControlSection(wx.StaticBoxSizer):
                 erp.GUI_APP.mainframe.route_panel.route = route
 
     def onPlayPauseBtn(self, e):
-        route = self.GetStaticBox().GetParent().GetParent().route_panel.route
+        route = erp.GUI_APP.mainframe.route_panel.route
         if route is not None:
             route.paused = not route.paused
             if route.paused:
                 e.EventObject.Label = "Resume"
             else:
                 e.EventObject.Label = "Pause"
-            self.GetStaticBox().GetParent().GetParent().route_panel.route = route
+            erp.GUI_APP.mainframe.route_panel.route = route
 
     def onRouteNextScoopable(self, e):
         """Fetch nearest main-sequence scoopable star nearest to current star system and insert into route"""

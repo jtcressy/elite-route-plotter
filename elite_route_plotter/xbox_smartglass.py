@@ -251,7 +251,7 @@ class SmartglassProcessor(Process):
                             ""
                             gevent.sleep(self._console.protocol.HEARTBEAT_INTERVAL)
                             self._console.protocol.ack([], [], ServiceChannel.Core, need_ack=True)
-                        except OSError as e:
+                        except (OSError,AttributeError) as e:
                             self._console.protocol.on_timeout()
                             self.outq.put(XboxEvent(EVT_XBOX_DISCONNECT_ID, f"Failed to connect {e}"))
                         finally:
