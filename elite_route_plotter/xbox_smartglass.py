@@ -212,10 +212,15 @@ class SmartglassProcessor(Process):
                             on_connect_request(new_item)  # this instantiates self._console
                             self.inq.task_done()
                         if isinstance(new_item, SystemTextSend):
-                            self._console.send_systemtext_input(new_item.text)
-                            self._console.finish_text_input()
-                            self.outq.put(f"Sent {new_item.text} to console")
-                            self.inq.task_done()
+                            if self._console is None or not self._console.connected:
+                                error = "Failed to send text. Disconnected!"
+                                self.outq.put(error)
+                                print(error)
+                            else:
+                                self._console.send_systemtext_input(new_item.text)
+                                self._console.finish_text_input()
+                                self.outq.put(f"Sent {new_item.text} to console")
+                                self.inq.task_done()
                         if isinstance(new_item, DisconnectRequest):
                             if self._console:
                                 if self._console.connected:

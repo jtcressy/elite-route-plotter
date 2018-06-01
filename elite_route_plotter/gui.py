@@ -30,7 +30,7 @@ class PlotterApp(wx.App):
         wx.EventLoop.SetActive(evtloop)
         while self.keepGoing:
             while evtloop.Pending():
-                evtloop.Dispatch()
+                evtloop.DispatchTimeout(0.01)
                 gevent.sleep()
             gevent.sleep()
         wx.EventLoop.SetActive(old)
@@ -478,6 +478,8 @@ class RouteControlSection(wx.StaticBoxSizer):
         self.GetStaticBox().Bind(wx.EVT_BUTTON, self.OnSkipBtn, self.skip_btn)
         self.GetStaticBox().Bind(wx.EVT_BUTTON, self.onRouteNextScoopable, self.route_nearest_scoopable)
         self.GetStaticBox().Bind(wx.EVT_BUTTON, self.OnPrevBtn, self.prev_btn)
+        self.GetStaticBox().Bind(wx.EVT_TEXT_ENTER, self.OnManualSend, self.manual_text_input)
+        self.GetStaticBox().Bind(wx.EVT_BUTTON, self.OnManualSend, self.manual_text_btn)
 
     def __DoLayout(self):
         row1 = wx.BoxSizer(wx.HORIZONTAL)
@@ -535,6 +537,12 @@ class RouteControlSection(wx.StaticBoxSizer):
             else:
                 e.EventObject.Label = "Pause"
             erp.GUI_APP.mainframe.route_panel.route = route
+
+    def OnManualSend(self, e):
+        text = self.manual_text_input.GetValue()
+        print("text to send:", text)
+        if type(text) == str:
+            erp.GUI_APP.task_queue.put(xbs.SystemTextSend(text))
 
     def onRouteNextScoopable(self, e):
         """Fetch nearest main-sequence scoopable star nearest to current star system and insert into route"""
