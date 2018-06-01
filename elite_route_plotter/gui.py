@@ -7,15 +7,13 @@ import wx.grid
 import gevent
 import sys
 import multiprocessing as mp
+import time
 
 
 class PlotterApp(wx.App):
-    def MainLoop(self):
-        evtloop = wx.GUIEventLoop()
-        old = wx.EventLoop.GetActive()
-        wx.EventLoop.SetActive(evtloop)
+    def XboxLoop(self):
         while self.keepGoing:
-            while evtloop.Pending():
+            while not self.result_queue.empty():
                 try:
                     result = self.result_queue.get_nowait()
                 except mp.queues.Empty:
@@ -23,7 +21,17 @@ class PlotterApp(wx.App):
                 else:
                     if isinstance(result, xbs.XboxEvent):
                         wx.PostEvent(self.mainframe, xbs.WX_EVENT_TYPES[result.id](result.payload))
+                        BEGIN = time.time()
+            gevent.sleep()
+
+    def MainLoop(self):
+        evtloop = wx.GUIEventLoop()
+        old = wx.EventLoop.GetActive()
+        wx.EventLoop.SetActive(evtloop)
+        while self.keepGoing:
+            while evtloop.Pending():
                 evtloop.Dispatch()
+                gevent.sleep()
             gevent.sleep()
         wx.EventLoop.SetActive(old)
 
@@ -33,11 +41,11 @@ class PlotterApp(wx.App):
         self.xbox_process = xbs.SmartglassProcessor(self.task_queue, self.result_queue, 0)
         self.mainframe = PlotterFrame(None)
         self.keepGoing = True
-        self.xbox_process.start()
         self.SetAppDisplayName(erp.APPLICATION_NAME)
         self.SetAppName(erp.APPLICATION_NAME)
         self.SetTopWindow(self.mainframe)
         self.mainframe.Show()
+        self.xbox_process.start()
         return 1
 
 
@@ -317,14 +325,12 @@ class XboxSection(wx.StaticBoxSizer):
         self.xbox_connect_btn.Label = "Connect"
 
     def OnSystemTextInput(self, e):
-        print(e)
         route: erp.Route = erp.GUI_APP.mainframe.route_panel.route
         if route:
             if route.next_waypoint is not None and not route.paused:
                 erp.GUI_APP.task_queue.put(xbs.SystemTextSend(route.next_waypoint.name))
                 route.visit(route.waypoints.index(route.next_waypoint))
                 erp.GUI_APP.mainframe.route_panel.route = route
-
 
     def OnConsoleSelected(self, e):
         discoveredConsole = e.EventObject.GetClientData(e.EventObject.GetCurrentSelection()).GetClientObject()
@@ -337,6 +343,7 @@ class XboxSection(wx.StaticBoxSizer):
 
     def OnDiscoveredConsole(self, e):
         self.discover_btn.Label = "Scan"
+        print(e)
         name = e.data.console_dict['name']
         uuid = e.data.console_dict['uuid']
         ipaddr = e.data.console_dict['address']
